@@ -33,29 +33,31 @@ function Auth({ onDone, notice }) {
       <input type="password" placeholder="Password" required value={f.password} onChange={set('password')} />
       {err && <div className="err">{err}</div>}
       <button className="btn">{setup ? 'Create Account' : 'Login'}</button>
-      <Credit />
     </form></div>
   );
 }
 
-function ChangePassword({ onClose }) {
-  const [f, setF] = useState({ current: '', password: '', again: '' }), [err, setErr] = useState(''), [ok, setOk] = useState(false);
+function ChangeAccount({ me, onClose, onEmail }) {
+  const [f, setF] = useState({ current: '', email: me.email || '', password: '', again: '' }), [err, setErr] = useState(''), [ok, setOk] = useState(false);
   const set = k => e => setF({ ...f, [k]: e.target.value });
   const submit = async e => {
     e.preventDefault(); setErr('');
-    if (f.password !== f.again) return setErr('New passwords do not match');
-    try { const d = await api('/auth/password', { method: 'PUT', body: { current: f.current, password: f.password } }); localStorage.setItem('t', d.token); setOk(true); }
-    catch (x) { setErr(x.message); }
+    if (f.password && f.password !== f.again) return setErr('New passwords do not match');
+    try {
+      const d = await api('/auth/account', { method: 'PUT', body: { current: f.current, email: f.email, password: f.password } });
+      localStorage.setItem('t', d.token); onEmail(d.email); setOk(true);
+    } catch (x) { setErr(x.message); }
   };
   return (
     <form className="card form" style={{ maxWidth: 420, margin: '10px auto' }} onSubmit={submit}>
-      <h3>🔑 Change Password</h3>
-      {ok ? <><div className="ok">Password changed. All other devices have been logged out.</div><button type="button" className="btn" onClick={onClose}>Close</button></> : <>
-        <input type="password" placeholder="Current password" required value={f.current} onChange={set('current')} />
-        <input type="password" placeholder="New password (min 6 characters)" required value={f.password} onChange={set('password')} />
-        <input type="password" placeholder="New password again" required value={f.again} onChange={set('again')} />
+      <h3>👤 My Account</h3>
+      {ok ? <><div className="ok">Account updated.{f.password ? ' Other devices have been logged out.' : ''}</div><button type="button" className="btn" onClick={onClose}>Close</button></> : <>
+        <label>Email<input type="email" required value={f.email} onChange={set('email')} /></label>
+        <label>New password (leave empty to keep)<input type="password" placeholder="min 6 characters" value={f.password} onChange={set('password')} /></label>
+        {f.password && <input type="password" placeholder="New password again" value={f.again} onChange={set('again')} />}
+        <label>Current password (required to save)<input type="password" required value={f.current} onChange={set('current')} /></label>
         {err && <div className="err">{err}</div>}
-        <div className="acts"><button className="btn">Change Password</button><button type="button" className="btn ghost" onClick={onClose}>Cancel</button></div></>}
+        <div className="acts"><button className="btn">Save</button><button type="button" className="btn ghost" onClick={onClose}>Cancel</button></div></>}
     </form>
   );
 }
@@ -91,13 +93,13 @@ export default function App() {
   else { const Page = cur[2]; page = <Page key={sel} />; }
   return (
     <div>
-      <header className="top noprint"><Brand sub={sub} campus={isDir ? (cur[0] === 'all' || cur[0] === 'logins' ? '' : selName) : me.campus?.name} /><button className="logout pwbtn" onClick={() => setPw(!pw)}>Password</button><button className="logout" onClick={async () => { try { await api('/auth/logout', { method: 'POST' }); } catch {} localStorage.clear(); setMe(null); setSel(''); }}>Logout</button></header>
+      <header className="top noprint"><Brand sub={sub} campus={isDir ? (cur[0] === 'all' || cur[0] === 'logins' ? '' : selName) : me.campus?.name} /><button className="logout pwbtn" onClick={() => setPw(!pw)}>Account</button><button className="logout" onClick={async () => { try { await api('/auth/logout', { method: 'POST' }); } catch {} localStorage.clear(); setMe(null); setSel(''); }}>Logout</button></header>
       {isDir && <div className="cbar noprint"><span>Open campus:</span>
         <select value={sel} onChange={e => choose(e.target.value, campuses.find(c => c._id === e.target.value)?.name)}>
           <option value="">— All campuses overview —</option>{campuses.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}</select></div>}
       <nav className="nav noprint">{tabs.map(([k, l]) => <button key={k} className={cur[0] === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</nav>
-      <main className="wrap">{pw && <ChangePassword onClose={() => setPw(false)} />}{page}</main>
-      <Credit />
+      <main className="wrap">{pw && <ChangeAccount me={me} onClose={() => setPw(false)} onEmail={em => setMe({ ...me, email: em })} />}{page}</main>
+      {(cur[0] === 'dash' || cur[0] === 'all') && <Credit />}
     </div>
   );
 }
