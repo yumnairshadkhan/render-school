@@ -15,9 +15,10 @@ const Empty = ({ t }) => <p className="muted">{t}</p>;
 
 const longDate = d => new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 const shiftDay = (d, n) => { const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + n); const p = v => String(v).padStart(2, '0'); return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())}`; };
+const greet = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; };
 const Section = ({ icon, title, color, items, total, empty, render }) => (
   <div className={'card dsec ' + color}>
-    <div className="dsec-h"><span>{icon} {title}</span><span><span className="badge">{items.length}</span> <b>{Rs(total)}</b></span></div>
+    <div className="dsec-h"><span className="dsec-t"><i className="sico">{icon}</i>{title}</span><span className="dsec-r"><span className="badge">{items.length}</span><b>{Rs(total)}</b></span></div>
     {items.map(render)}{!items.length && <Empty t={empty} />}
   </div>
 );
@@ -29,7 +30,7 @@ export function Dashboard() {
   const spentPct = mo && mo.income > 0 ? Math.min(100, Math.round(((mo.expenses + mo.salaries) / mo.income) * 100)) : 0;
   return (<>
     <div className="dhead">
-      <div><h2>{isToday ? "Today's Report" : 'Daily Report'}</h2><p className="muted">{longDate(date)}</p></div>
+      <div><h2>{isToday ? greet() + ' 👋' : 'Daily Report'}</h2><p className="muted">{isToday ? "Here is today's report · " : ''}{longDate(date)}</p></div>
       <div className="dpick">
         <button className={'btn ghost sm' + (isToday ? ' sel' : '')} onClick={() => setDate(today())}>Today</button>
         <button className={'btn ghost sm' + (date === shiftDay(today(), -1) ? ' sel' : '')} onClick={() => setDate(shiftDay(today(), -1))}>Yesterday</button>
@@ -39,24 +40,24 @@ export function Dashboard() {
     {!d && <p className="muted">Loading report...</p>}
     {d && <>
       <div className="hero">
-        <div className="hbox in"><small>💰 Money In</small><b>{Rs(d.totalIn)}</b><span>Fees received</span></div>
-        <div className="hbox out"><small>💸 Money Out</small><b>{Rs(d.totalOut)}</b><span>Expenses + salaries</span></div>
-        <div className={'hbox ' + (left < 0 ? 'neg' : 'net')}><small>{left < 0 ? '⚠️ Loss' : '✅ Left'}</small><b>{Rs(Math.abs(left))}</b><span>{left < 0 ? 'Spent more than received' : 'Saved today'}</span></div>
+        <div className="hbox in"><i className="hic">💰</i><small>Money In</small><b>{Rs(d.totalIn)}</b><span>Fees received</span></div>
+        <div className="hbox out"><i className="hic">💸</i><small>Money Out</small><b>{Rs(d.totalOut)}</b><span>Expenses + salaries</span></div>
+        <div className={'hbox ' + (left < 0 ? 'neg' : 'net')}><i className="hic">{left < 0 ? '⚠️' : '✅'}</i><small>{left < 0 ? 'Loss' : 'Left'}</small><b>{Rs(Math.abs(left))}</b><span>{left < 0 ? 'Spent more than received' : 'Saved today'}</span></div>
       </div>
       <p className="summary">{isToday ? 'Today' : 'On this day'} the school received <b className="g">{Rs(d.totalIn)}</b> in fees and spent <b className="r">{Rs(d.totalOut)}</b>, so <b>{left < 0 ? 'it is ' + Rs(-left) + ' short.' : Rs(left) + ' is left.'}</b></p>
 
       <div className="alerts">
-        <div className="alert warn"><span>⏳ Fees Not Yet Paid</span><b>{Rs(d.pending)}</b><small>{d.pendingCount} voucher(s) waiting</small></div>
-        {mo && <div className="alert warn"><span>👩‍🏫 Salaries Pending ({mo.month})</span><b>{Rs(mo.salaryPending)}</b><small>{mo.salaryPendingCount} teacher(s) not paid yet</small></div>}
-        <div className="alert info"><span>🎓 Total Students</span><b>{d.students}</b><small>currently enrolled</small></div>
+        <div className="alert warn"><i className="aic">⏳</i><div><span>Fees Not Yet Paid</span><b>{Rs(d.pending)}</b><small>{d.pendingCount} voucher(s) waiting</small></div></div>
+        {mo && <div className="alert warn"><i className="aic">👩‍🏫</i><div><span>Salaries Pending ({mo.month})</span><b>{Rs(mo.salaryPending)}</b><small>{mo.salaryPendingCount} teacher(s) not paid yet</small></div></div>}
+        <div className="alert info"><i className="aic">🎓</i><div><span>Total Students</span><b>{d.students}</b><small>currently enrolled</small></div></div>
       </div>
 
       <Section icon="📥" title="Fees Received" color="gr" items={d.fees} total={d.fees.reduce((x, v) => x + v.amount, 0)} empty="No fees received on this day."
-        render={v => <div className="line" key={v._id}><span>{v.student?.name} <small className="muted">({v.student && Cls(v.student)})</small></span><b>{Rs(v.amount)}</b></div>} />
+        render={v => <div className="item" key={v._id}><i className="av g1">{(v.student?.name || '?').trim()[0]}</i><span className="who">{v.student?.name}<small>{v.student && Cls(v.student)}</small></span><b className="g">{Rs(v.amount)}</b></div>} />
       <Section icon="🧾" title="Expenses" color="rd" items={d.exp} total={d.exp.reduce((x, v) => x + v.amount, 0)} empty="No expenses on this day."
-        render={v => <div className="line" key={v._id}><span>{v.title}</span><b>{Rs(v.amount)}</b></div>} />
+        render={v => <div className="item" key={v._id}><i className="av r1">🧾</i><span className="who">{v.title}</span><b>{Rs(v.amount)}</b></div>} />
       <Section icon="👩‍🏫" title="Salaries Paid" color="bl" items={d.sal} total={d.sal.reduce((x, v) => x + v.amount, 0)} empty="No salaries paid on this day."
-        render={v => <div className="line" key={v._id}><span>{v.teacher?.name}</span><b>{Rs(v.amount)}</b></div>} />
+        render={v => <div className="item" key={v._id}><i className="av b1">{(v.teacher?.name || '?').trim()[0]}</i><span className="who">{v.teacher?.name}<small>Salary</small></span><b>{Rs(v.amount)}</b></div>} />
 
       {mo && <div className="card mon">
         <h3>📅 This Month ({mo.month})</h3>
