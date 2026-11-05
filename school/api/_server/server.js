@@ -46,7 +46,7 @@ const data = [auth, inCampus]; // saare campus-data routes
 const clean = b => { const { campus, _id, createdAt, updatedAt, __v, ...rest } = b || {}; return rest; };
 const mine = q => ({ campus: q.campusId });
 const sum = a => a.reduce((s, x) => s + (x.amount || 0), 0);
-const me = async u => ({ role: u.role, name: u.name, campus: u.role === 'campus' ? await Campus.findById(u.campus) : null });
+const me = async u => ({ role: u.role, name: u.name, email: u.email, campus: u.role === 'campus' ? await Campus.findById(u.campus) : null });
 
 // ---- Auth: pehla form sirf ek dafa (director setup), uske baad sirf login ----
 app.get('/api/auth/me', auth, w(async (q, r) => r.json(await me(q.user))));
@@ -70,6 +70,22 @@ app.put('/api/auth/password', auth, w(async (q, r) => {
   if (!password || password.length < 6) throw new Error('New password must be at least 6 characters');
   q.user.password = await bcrypt.hash(password, 10); q.user.sessionId = null; await q.user.save();
   r.json({ token: await newSession(q.user) });
+}));
+// Account: email aur/ya password badalna (director aur campus dono). Password badalne par baaqi devices logout ho jate hain.
+app.put('/api/auth/account', auth, w(async (q, r) => {
+  const { current, email, password } = q.body, u = q.user;
+  if (!(await bcrypt.compare(current || '', u.password))) throw new Error('Current password is incorrect');
+  const e = (email || '').toLowerCase().trim();
+  if (e && e !== u.email) {
+    if (await User.findOne({ email: e, _id: { $ne: u._id } })) throw new Error('This email is already used by another account');
+    u.email = e;
+  }
+  if (password) {
+    if (password.length < 6) throw new Error('New password must be at least 6 characters');
+    u.password = await bcrypt.hash(password, 10); u.sessionId = null;
+  }
+  await u.save();
+  r.json({ token: await newSession(u), email: u.email });
 }));
 app.post('/api/auth/logout', auth, w(async (q, r) => { if (q.user.role === 'director') await User.findByIdAndUpdate(q.user._id, { sessionId: null }); r.json({ ok: true }); })); // campus logout sirf us device ka
 
