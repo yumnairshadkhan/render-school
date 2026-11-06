@@ -6,6 +6,7 @@ const app = express(); app.use(cors()); app.use(express.json());
 // ---- Campuses (pehle se bane hue) ----
 const CAMPUSES = ['7C Campus', 'Karachi Cambridge School 4/B', 'SAJ Nighat Mannan Campus 7/D', 'Campus 5-B/3', 'Campus 7/A'];
 const seed = async () => {
+  if ((await Campus.countDocuments()) >= CAMPUSES.length) return; // pehle se ban chuka: kuch karne ki zaroorat nahi
   for (let i = 0; i < CAMPUSES.length; i++) await Campus.updateOne({ name: CAMPUSES[i] }, { $setOnInsert: { order: i } }, { upsert: true });
   const c7 = await Campus.findOne({ name: CAMPUSES[0] });
   // purana data (jab sirf 7C tha) 7C Campus ke naam kar do
@@ -36,7 +37,7 @@ const auth = async (q, r, n) => {
     q.user = u;
     // Campus wale user sirf apna campus dekh sakte hain; director header se campus chunta hai
     if (u.role === 'campus') q.campusId = u.campus;
-    else { const h = q.headers['x-campus']; if (h && isId(h) && (await Campus.exists({ _id: h }))) q.campusId = h; }
+    else { const h = q.headers['x-campus']; if (h && isId(h)) q.campusId = h; }
     n();
   } catch { r.status(401).json({ error: 'Please login first' }); }
 };
@@ -179,18 +180,20 @@ app.post('/api/teachers/:id/pay', data, w(async (q, r) => {
 // ---- Daily statement / Dashboard (ek campus) ----
 app.get('/api/report', data, w(async (q, r) => {
   const d = q.query.date, c = mine(q);
-  const fees = await Voucher.find({ ...c, paidDate: d }).populate('student', 'name class section');
-  const exp = await Expense.find({ ...c, date: d });
-  const sal = await Salary.find({ ...c, paidDate: d }).populate('teacher', 'name');
-  const unpaid = await Voucher.find({ ...c, status: 'unpaid' });
-  r.json({ date: d, fees, exp, sal, totalIn: sum(fees), totalOut: sum(exp) + sum(sal),
-    students: await Student.countDocuments({ ...c, active: true }), pending: sum(unpaid), pendingCount: unpaid.length });
+  const [fees, exp, sal, unpaid, students] = await Promise.all([
+    Voucher.find({ ...c, paidDate: d }).populate('student', 'name class section'),
+    Expense.find({ ...c, date: d }),
+    Salary.find({ ...c, paidDate: d }).populate('teacher', 'name'),
+    Voucher.find({ ...c, status: 'unpaid' }),
+    Student.countDocuments({ ...c, active: true })]);
+  r.json({ date: d, fees, exp, sal, totalIn: sum(fees), totalOut: sum(exp) + sum(sal), students, pending: sum(unpaid), pendingCount: unpaid.length });
 }));
 const monthStats = async (c, m) => {
   const re = new RegExp('^' + m);
-  const fees = await Voucher.find({ ...c, paidDate: re }), exp = await Expense.find({ ...c, date: re }), sal = await Salary.find({ ...c, month: m });
-  const due = await Voucher.find({ ...c, month: m, status: 'unpaid' });
-  const teachers = await Teacher.find(c); const paidIds = sal.map(x => String(x.teacher));
+  const [fees, exp, sal, due, teachers] = await Promise.all([
+    Voucher.find({ ...c, paidDate: re }), Expense.find({ ...c, date: re }), Salary.find({ ...c, month: m }),
+    Voucher.find({ ...c, month: m, status: 'unpaid' }), Teacher.find(c)]);
+  const paidIds = sal.map(x => String(x.teacher));
   const pendingSal = teachers.filter(t => !paidIds.includes(String(t._id)));
   return { month: m, income: sum(fees), expenses: sum(exp), salaries: sum(sal), net: sum(fees) - sum(exp) - sum(sal),
     feesDue: sum(due), feesDueCount: due.length, salaryPending: pendingSal.reduce((s, t) => s + (t.salary || 0), 0), salaryPendingCount: pendingSal.length };
@@ -203,10 +206,10 @@ app.get('/api/overview', auth, director, w(async (q, r) => {
   const list = await Campus.find().sort({ order: 1, name: 1 }).lean();
   const rows = await Promise.all(list.map(async c => {
     const k = { campus: c._id };
-    const fees = await Voucher.find({ ...k, paidDate: d }), exp = await Expense.find({ ...k, date: d }), sal = await Salary.find({ ...k, paidDate: d });
-    const unpaid = await Voucher.find({ ...k, status: 'unpaid' });
-    const mo = await monthStats(k, m);
-    return { _id: c._id, name: c.name, students: await Student.countDocuments({ ...k, active: true }),
+    const [fees, exp, sal, unpaid, mo, students] = await Promise.all([
+      Voucher.find({ ...k, paidDate: d }), Expense.find({ ...k, date: d }), Salary.find({ ...k, paidDate: d }),
+      Voucher.find({ ...k, status: 'unpaid' }), monthStats(k, m), Student.countDocuments({ ...k, active: true })]);
+    return { _id: c._id, name: c.name, students,
       income: sum(fees), expenses: sum(exp), salaries: sum(sal), left: sum(fees) - sum(exp) - sum(sal),
       pending: sum(unpaid), pendingCount: unpaid.length, month: mo };
   }));
