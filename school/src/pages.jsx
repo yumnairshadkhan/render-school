@@ -255,14 +255,14 @@ export function Overview({ onOpen }) {
     {!d && !err && <p className="muted">Loading report...</p>}
     {d && <>
       <div className="hero">
-        <div className="hbox in"><small>💰 Money In (all campuses)</small><b>{Rs(T.income)}</b><span>Fees received</span></div>
-        <div className="hbox out"><small>💸 Money Out (all campuses)</small><b>{Rs(T.expenses + T.salaries)}</b><span>Expenses + salaries</span></div>
-        <div className={'hbox ' + (T.left < 0 ? 'neg' : 'net')}><small>{T.left < 0 ? '⚠️ Loss' : '✅ Left'}</small><b>{Rs(Math.abs(T.left))}</b><span>{T.students} students in total</span></div>
+        <div className="hbox in"><i className="hic">💰</i><small>Money In (all campuses)</small><b>{Rs(T.income)}</b><span>Fees received</span></div>
+        <div className="hbox out"><i className="hic">💸</i><small>Money Out (all campuses)</small><b>{Rs(T.expenses + T.salaries)}</b><span>Expenses + salaries</span></div>
+        <div className={'hbox ' + (T.left < 0 ? 'neg' : 'net')}><i className="hic">{T.left < 0 ? '⚠️' : '✅'}</i><small>{T.left < 0 ? 'Loss' : 'Left'}</small><b>{Rs(Math.abs(T.left))}</b><span>{T.students} students in total</span></div>
       </div>
       <div className="alerts">
-        <div className="alert warn"><span>⏳ Fees Not Yet Paid (all)</span><b>{Rs(T.pending)}</b><small>{T.pendingCount} voucher(s) waiting</small></div>
-        <div className="alert warn"><span>👩‍🏫 Salaries Pending (this month)</span><b>{Rs(T.month.salaryPending)}</b><small>all campuses</small></div>
-        <div className="alert info"><span>📅 This Month Left</span><b className={T.month.net < 0 ? 'r' : 'g'}>{Rs(T.month.net)}</b><small>fees − expenses − salaries</small></div>
+        <div className="alert warn"><i className="aic">⏳</i><div><span>Fees Not Yet Paid (all)</span><b>{Rs(T.pending)}</b><small>{T.pendingCount} voucher(s) waiting</small></div></div>
+        <div className="alert warn"><i className="aic">👩‍🏫</i><div><span>Salaries Pending (this month)</span><b>{Rs(T.month.salaryPending)}</b><small>all campuses</small></div></div>
+        <div className="alert info"><i className="aic">📅</i><div><span>This Month Left</span><b className={T.month.net < 0 ? 'r' : 'g'}>{Rs(T.month.net)}</b><small>fees − expenses − salaries</small></div></div>
       </div>
       <h3 style={{ marginTop: 14 }}>Campus-wise Daily Statement</h3>
       <div className="grid">{d.rows.map(c => <div className="card campcard" key={c._id}>

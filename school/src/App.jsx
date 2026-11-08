@@ -4,7 +4,10 @@ import { Dashboard, Students, Vouchers, Expenses, Teachers, Overview, CampusLogi
 
 // Karachi Cambridge School ka apna naam heading mein aata hai (koi sub-heading nahi)
 const isKCS = name => /cambridge/i.test(name || '');
-const Brand = ({ big, sub, campus }) => (
+const Brand = ({ big, side, sub, campus }) => side ? (
+  <div className="sbrand"><div className="logo">🏫</div>
+    <div>{isKCS(campus) ? <h1>Karachi Cambridge School (KCS)</h1> : <><h1>Sir Adam Jee Schooling System</h1>{sub && <p>{sub}</p>}</>}</div></div>
+) : (
   <div className={'brand' + (big ? ' big' : '')}><div className="logo">🏫</div>
     {isKCS(campus) ? <h1>Karachi Cambridge School (KCS)</h1> : <><h1>Sir Adam Jee Schooling System</h1>{sub && <p>{sub}</p>}</>}</div>
 );
@@ -91,15 +94,26 @@ export default function App() {
   if (cur[0] === 'all') page = <Overview onOpen={c => choose(c._id, c.name)} />;
   else if (cur[0] === 'logins') page = <CampusLogins />;
   else { const Page = cur[2]; page = <Page key={sel} />; }
+  const logout = async () => { try { await api('/auth/logout', { method: 'POST' }); } catch {} localStorage.clear(); setMe(null); setSel(''); };
+  const brandCampus = isDir ? (cur[0] === 'all' || cur[0] === 'logins' ? '' : selName) : me.campus?.name;
   return (
-    <div>
-      <header className="top noprint"><Brand sub={sub} campus={isDir ? (cur[0] === 'all' || cur[0] === 'logins' ? '' : selName) : me.campus?.name} /><button className="logout pwbtn" onClick={() => setPw(!pw)}>Account</button><button className="logout" onClick={async () => { try { await api('/auth/logout', { method: 'POST' }); } catch {} localStorage.clear(); setMe(null); setSel(''); }}>Logout</button></header>
-      {isDir && <div className="cbar noprint"><span>Open campus:</span>
-        <select value={sel} onChange={e => choose(e.target.value, campuses.find(c => c._id === e.target.value)?.name)}>
-          <option value="">— All campuses overview —</option>{campuses.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}</select></div>}
-      <nav className="nav noprint">{tabs.map(([k, l]) => <button key={k} className={cur[0] === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</nav>
-      <main className="wrap">{pw && <ChangeAccount me={me} onClose={() => setPw(false)} onEmail={em => setMe({ ...me, email: em })} />}{page}</main>
-      {(cur[0] === 'dash' || cur[0] === 'all') && <Credit />}
+    <div className="shell">
+      <aside className="side noprint">
+        <Brand side sub={sub} campus={brandCampus} />
+        <nav className="snav">{tabs.map(([k, l]) => { const [ic, ...rest] = l.split(' '); return <button key={k} className={cur[0] === k ? 'on' : ''} onClick={() => setTab(k)}><i>{ic}</i><span>{rest.join(' ')}</span></button>; })}</nav>
+        <div className="sfoot"><button onClick={() => setPw(!pw)}><i>👤</i><span>Account</span></button><button onClick={logout}><i>🚪</i><span>Logout</span></button></div>
+      </aside>
+      <div className="mainarea">
+        <header className="topbar noprint">
+          {isDir ? <div className="cbar2"><span>Open campus</span>
+            <select value={sel} onChange={e => choose(e.target.value, campuses.find(c => c._id === e.target.value)?.name)}>
+              <option value="">— All campuses overview —</option>{campuses.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}</select></div>
+            : <div className="cbar2"><span>🏫 {me.campus?.name}</span></div>}
+          <div className="uchip"><i className="uav">{(me.name || '?').trim()[0]}</i><span><b>{me.name}</b><small>{isDir ? 'Director' : 'Campus'}</small></span></div>
+        </header>
+        <main className="wrap">{pw && <ChangeAccount me={me} onClose={() => setPw(false)} onEmail={em => setMe({ ...me, email: em })} />}{page}</main>
+        {(cur[0] === 'dash' || cur[0] === 'all') && <Credit />}
+      </div>
     </div>
   );
 }
