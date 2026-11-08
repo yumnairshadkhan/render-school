@@ -36,6 +36,7 @@ function Auth({ onDone, notice }) {
       <input type="password" placeholder="Password" required value={f.password} onChange={set('password')} />
       {err && <div className="err">{err}</div>}
       <button className="btn">{setup ? 'Create Account' : 'Login'}</button>
+      <Credit />
     </form></div>
   );
 }
@@ -112,7 +113,7 @@ export default function App() {
           <div className="uchip"><i className="uav">{(me.name || '?').trim()[0]}</i><span><b>{me.name}</b><small>{isDir ? 'Director' : 'Campus'}</small></span></div>
         </header>
         <main className="wrap">{pw && <ChangeAccount me={me} onClose={() => setPw(false)} onEmail={em => setMe({ ...me, email: em })} />}{page}</main>
-        {(cur[0] === 'dash' || cur[0] === 'all') && <Credit />}
+        <Credit />
       </div>
     </div>
   );
