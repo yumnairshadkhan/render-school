@@ -70,7 +70,7 @@ const CAMPUS_TABS = [['dash', '📊 Dashboard', Dashboard], ['students', '🎓 S
 
 export default function App() {
   const [me, setMe] = useState(null), [chk, setChk] = useState(!!localStorage.getItem('t')), [tab, setTab] = useState('dash'), [notice, setNotice] = useState('');
-  const [pw, setPw] = useState(false), [campuses, setCampuses] = useState([]), [sel, setSel] = useState(localStorage.getItem('campus') || '');
+  const [menu, setMenu] = useState(false), [pw, setPw] = useState(false), [campuses, setCampuses] = useState([]), [sel, setSel] = useState(localStorage.getItem('campus') || '');
   const isDir = me?.role === 'director';
   const start = d => {
     // campus wale ka campus fix hai; director ke liye pehle koi campus chuna hua nahi
@@ -99,13 +99,16 @@ export default function App() {
   const brandCampus = isDir ? (cur[0] === 'all' || cur[0] === 'logins' ? '' : selName) : me.campus?.name;
   return (
     <div className="shell">
-      <aside className="side noprint">
+      <div className={'backdrop noprint' + (menu ? ' show' : '')} onClick={() => setMenu(false)} />
+      <aside className={'side noprint' + (menu ? ' open' : '')}>
+        <button className="sclose" onClick={() => setMenu(false)} aria-label="Close menu">✕</button>
         <Brand side sub={sub} campus={brandCampus} />
-        <nav className="snav">{tabs.map(([k, l]) => { const [ic, ...rest] = l.split(' '); return <button key={k} className={cur[0] === k ? 'on' : ''} onClick={() => setTab(k)}><i>{ic}</i><span>{rest.join(' ')}</span></button>; })}</nav>
-        <div className="sfoot"><button onClick={() => setPw(!pw)}><i>👤</i><span>Account</span></button><button onClick={logout}><i>🚪</i><span>Logout</span></button></div>
+        <nav className="snav">{tabs.map(([k, l]) => { const [ic, ...rest] = l.split(' '); return <button key={k} className={cur[0] === k ? 'on' : ''} onClick={() => { setTab(k); setMenu(false); }}><i>{ic}</i><span>{rest.join(' ')}</span></button>; })}</nav>
+        <div className="sfoot"><button onClick={() => { setPw(!pw); setMenu(false); }}><i>👤</i><span>Account</span></button><button onClick={() => { setMenu(false); logout(); }}><i>🚪</i><span>Logout</span></button></div>
       </aside>
       <div className="mainarea">
         <header className="topbar noprint">
+          <button className="burger" onClick={() => setMenu(true)} aria-label="Open menu">☰</button>
           {isDir ? <div className="cbar2"><span>Open campus</span>
             <select value={sel} onChange={e => choose(e.target.value, campuses.find(c => c._id === e.target.value)?.name)}>
               <option value="">— All campuses overview —</option>{campuses.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}</select></div>
