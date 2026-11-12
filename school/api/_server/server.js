@@ -19,7 +19,22 @@ app.get('/api/health', (q, r) => r.json({ ok: true }));
 
 // DB connection cache: Vercel serverless me har request par naya connection na bane
 let conn = null;
-const connectDB = () => conn || (conn = mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 }).then(seed).catch(e => { conn = null; throw e; }));
+// Purana 'unique email' index hata do (ek email kai campuses share kar saken) aur normal index rakho
+const fixUserIndex = async () => {
+  try {
+    const ix = await User.collection.indexes();
+    const old = ix.find(i => i.name === 'email_1');
+    if (old && old.unique) { await User.collection.dropIndex('email_1'); await User.collection.createIndex({ email: 1 }); }
+    else if (!old) await User.collection.createIndex({ email: 1 });
+  } catch (e) { /* index masla ho to bhi app chalti rahe */ }
+};
+const connectDB = () => conn || (conn = mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 }).then(seed).then(fixUserIndex).catch(e => { conn = null; throw e; }));
+// Kya is email ke kisi aur account ka password yehi hai? (shared email par har campus ka password alag hona zaroori hai)
+const passwordClash = async (email, password, excludeId) => {
+  const others = await User.find({ email, ...(excludeId && { _id: { $ne: excludeId } }) });
+  for (const o of others) if (await bcrypt.compare(password, o.password)) return true;
+  return false;
+};
 app.use('/api', async (q, r, n) => { try { await connectDB(); n(); } catch (e) { r.status(500).json({ error: 'Database connection failed. Check MONGO_URI and Atlas Network Access (0.0.0.0/0). ' + e.message }); } });
 const w = f => (q, r, n) => f(q, r, n).catch(e => r.status(400).json({ error: e.code === 11000 ? 'Already exists (this email may be in use)' : e.message }));
 const crypto = require('crypto'), path = require('path'), fs = require('fs');
@@ -60,8 +75,10 @@ app.post('/api/auth/setup', w(async (q, r) => {
   r.json({ token: await newSession(u), ...(await me(u)) });
 }));
 app.post('/api/auth/login', w(async (q, r) => {
-  const u = await User.findOne({ email: (q.body.email || '').toLowerCase().trim() });
-  if (!u || !(await bcrypt.compare(q.body.password || '', u.password))) throw new Error('Incorrect email or password');
+  const pass = q.body.password || '', cands = await User.find({ email: (q.body.email || '').toLowerCase().trim() });
+  let u = null;
+  for (const c of cands) if (await bcrypt.compare(pass, c.password)) { u = c; break; } // ek email par kai campus ho sakte hain: jis ka password match kare wahi khulta hai
+  if (!u) throw new Error('Incorrect email or password');
   r.json({ token: await newSession(u), ...(await me(u)) });
 }));
 // Apna password badalna (director aur campus dono). Badalte hi baaqi sab devices logout ho jate hain, aur is device ko naya token milta hai.
@@ -78,9 +95,12 @@ app.put('/api/auth/account', auth, w(async (q, r) => {
   if (!(await bcrypt.compare(current || '', u.password))) throw new Error('Current password is incorrect');
   const e = (email || '').toLowerCase().trim();
   if (e && e !== u.email) {
-    if (await User.findOne({ email: e, _id: { $ne: u._id } })) throw new Error('This email is already used by another account');
+    const same = await User.find({ email: e, _id: { $ne: u._id } });
+    if (same.some(o => o.role === 'director' || u.role === 'director')) throw new Error('This email is already used by another account');
+    if (same.length && !password && (await passwordClash(e, current, u._id))) throw new Error('Another campus with this email already has the same password. Please also set a new password.');
     u.email = e;
   }
+  if (password && (await passwordClash(u.email, password, u._id))) throw new Error('This password is already used by another campus with the same email. Choose a different password.');
   if (password) {
     if (password.length < 6) throw new Error('New password must be at least 6 characters');
     u.password = await bcrypt.hash(password, 10); u.sessionId = null;
@@ -104,8 +124,10 @@ app.put('/api/campuses/:id/account', auth, director, w(async (q, r) => {
   let u = await User.findOne({ role: 'campus', campus: c._id });
   if (!u && password.length < 6) throw new Error('Password must be at least 6 characters');
   if (password && password.length < 6) throw new Error('Password must be at least 6 characters');
-  const other = await User.findOne({ email, ...(u && { _id: { $ne: u._id } }) });
-  if (other) throw new Error('This email is already used by another account');
+  const others = await User.find({ email, ...(u && { _id: { $ne: u._id } }) });
+  if (others.some(o => o.role === 'director')) throw new Error('This email belongs to the director account. Use a different email for campuses.');
+  if (others.length && u && email !== u.email && !password) throw new Error('When using a shared email, please also set a password for this campus.');
+  if (password && (await passwordClash(email, password, u?._id))) throw new Error('Another campus with this email already uses this password. Choose a different password for this campus.');
   if (!u) u = new User({ role: 'campus', campus: c._id, name: c.name });
   u.email = email; if (password) { u.password = await bcrypt.hash(password, 10); u.sessionId = null; } // password badla to purana login khatam
   await u.save(); r.json({ ok: true });

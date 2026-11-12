@@ -1,7 +1,7 @@
 const m = require('mongoose'), S = m.Schema;
 // sessionId: sirf ek device ka login valid rehta hai (naya login purane ko logout kar deta hai)
 exports.Campus = m.model('Campus', new S({ name: { type: String, unique: true }, order: Number }));
-exports.User = m.model('User', new S({ role: { type: String, enum: ['director', 'campus'], default: 'director' }, campus: { type: S.Types.ObjectId, ref: 'Campus' }, name: String, email: { type: String, unique: true, lowercase: true }, phone: String, password: String, sessionId: String }));
+exports.User = m.model('User', new S({ role: { type: String, enum: ['director', 'campus'], default: 'director' }, campus: { type: S.Types.ObjectId, ref: 'Campus' }, name: String, email: { type: String, lowercase: true, index: true }, phone: String, password: String, sessionId: String }, { autoIndex: false })); // email ab unique nahi: sab campuses ek hi email share kar sakte hain (password alag)
 exports.Student = m.model('Student', new S({
   campus: { type: S.Types.ObjectId, ref: 'Campus', index: true },
   admissionNo: Number, admissionDate: String, name: String, gender: { type: String, enum: ['Male', 'Female'], default: 'Male' },
