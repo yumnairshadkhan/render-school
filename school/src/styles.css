@@ -165,7 +165,6 @@ html,body{max-width:100%;overflow-x:hidden}
   .topbar{padding:12px 14px 0;flex-wrap:nowrap}
   .burger{display:grid;place-items:center;flex:none;width:44px;height:44px;border:0;border-radius:14px;background:#fff;box-shadow:0 4px 16px rgba(80,82,160,.12);font-size:22px;color:var(--navy);cursor:pointer}
   .cbar2{flex:1;min-width:0;padding:6px 12px}
-  .cbar2>span:first-child{white-space:nowrap}
   .cbar2 select{flex:1;min-width:0;max-width:100%;text-overflow:ellipsis}
   .uchip{flex:none;padding:4px}.uchip span{display:none}
   .wrap{padding:12px 14px 8px}
@@ -176,3 +175,8 @@ html,body{max-width:100%;overflow-x:hidden}
 .row2>*,.form>*{min-width:0}
 input,select{min-width:0;max-width:100%}
 @media(max-width:860px){.side{box-shadow:none}.side.open{box-shadow:8px 0 30px rgba(18,19,74,.3)}}
+
+/* ===== Long campus name: wraps inside its white box instead of spilling out ===== */
+.cbar2{min-width:0}
+.cbar2>span:first-child{white-space:normal;overflow-wrap:anywhere;line-height:1.35}
+@media(max-width:860px){.cbar2{align-items:center;padding:8px 14px}.cbar2>span:first-child{font-size:14.5px}}
