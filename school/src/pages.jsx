@@ -289,7 +289,7 @@ export function CampusLogins() {
   };
   return (<>
     <h2>Campus Logins</h2>
-    <p className="muted">Each campus has its own login and can only see its own data.</p>
+    <p className="muted">Each campus can only see its own data. You can use the same email for all campuses, just give each campus a different password.</p>
     {msg && <div className={msg.includes('saved') ? 'ok' : 'err'}>{msg}</div>}
     <div className="grid">{list.map(c => <div className="card" key={c._id}>
       <div className="line"><b>🏫 {c.name}</b><span className={'chip ' + (c.login ? 'p' : 'u')}>{c.login ? 'Login ready' : 'No login yet'}</span></div>
